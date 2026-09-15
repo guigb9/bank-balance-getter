@@ -51,7 +51,7 @@ class FinancialTransactionsConsumerIntegrationTest {
 
     @Test
     fun `consumer receives and maps financial transaction from real broker`() {
-        val accountId = UUID.randomUUID()
+        val accountId = "83dc04a4-f694-4f9c-8f30-68407ab6403a"
         val ownerId = UUID.randomUUID()
         val transactionId = UUID.randomUUID()
         val timestamp = 1_751_641_364_589_998L
@@ -84,12 +84,12 @@ class FinancialTransactionsConsumerIntegrationTest {
         val processed = assertNotNull(recordingUseCase.awaitMessage())
         val account = processed.first
         val transaction = processed.second
-        assertEquals(accountId, account.id)
+        assertEquals(accountId, account.id.toString())
         assertEquals(ownerId, account.ownerId)
         assertEquals(BigDecimal("183.12"), account.balance.amount)
         assertEquals(timestamp, account.updatedAt)
         assertEquals(transactionId, transaction.id)
-        assertEquals(accountId, transaction.accountId)
+        assertEquals(accountId, transaction.accountId.toString())
         assertEquals(TransactionTypeEnum.CREDIT, transaction.type)
         assertEquals(TransactionStatusEnum.APPROVED, transaction.status)
         assertEquals(BigDecimal("97.07"), transaction.amount)
