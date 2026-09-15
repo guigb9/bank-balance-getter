@@ -1,5 +1,6 @@
 package br.com.itau.challenge.balance.adapter.input.kafka
 
+import br.com.itau.challenge.balance.adapter.input.kafka.exception.InvalidMessageFormatException
 import br.com.itau.challenge.balance.domain.model.Account
 import br.com.itau.challenge.balance.domain.model.AccountStatusEnum
 import br.com.itau.challenge.balance.domain.model.Balance
@@ -108,6 +109,42 @@ class FinancialTransactionsConsumerTest {
                 "timestamp": 1751641364589998
               },
               "account": {
+                "id": "5b19c8b6-0cc4-4c72-a989-0c2ee15fa975",
+                "owner": "315e3cfe-f4af-4cd2-b298-a449e614349a",
+                "created_at": 1634874339000000,
+                "status": "ENABLED",
+                "balance": {
+                  "amount": 183.12,
+                  "currency": "BRL"
+                }
+              }
+            }
+        """.trimIndent()
+            )
+        }
+
+    }
+
+    @Test
+    fun `should throw InvalidMessageFormatException when JSON payload is invalid`() {
+
+        val useCase = FinancialTransactionProcessorUseCase { account, transaction ->
+        }
+
+        val consumer = FinancialTransactionsConsumer(objectMapper, useCase)
+        assertThrows<InvalidMessageFormatException> {
+            // Chame aqui a função que deve dar erro
+            consumer.consume(
+                """
+            {
+              "transaction": {
+                "type": "CREDIT",
+                "amount": 97.07,
+                "currency": "BRL",
+                "status": "APPROVED",
+                "timestamp": 1751641364589998
+              },
+              "accounts": {
                 "id": "5b19c8b6-0cc4-4c72-a989-0c2ee15fa975",
                 "owner": "315e3cfe-f4af-4cd2-b298-a449e614349a",
                 "created_at": 1634874339000000,
