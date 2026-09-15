@@ -15,6 +15,6 @@ fun TransactionMessage.toEntity(accountId: String?) = Transaction(
     amount = amount?.let { it } ?: throw InvalidParameterException(),
     currency = currency?.let { Currency.getInstance(it) } ?: throw InvalidParameterException(),
     status = status?.let { TransactionStatusEnum.valueOf(it) } ?: throw InvalidParameterException(),
-    timestamp = timestamp?.let { Instant.fromEpochMilliseconds(it/1000) } ?: throw InvalidParameterException(),
+    timestamp = timestamp ?: throw InvalidParameterException(),
     accountId = accountId?.let { UUID.fromString(it) } ?: throw InvalidParameterException()
 )

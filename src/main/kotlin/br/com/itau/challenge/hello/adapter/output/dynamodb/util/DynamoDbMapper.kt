@@ -13,13 +13,13 @@ import java.util.UUID
 import kotlin.time.Instant
 
 fun Account.getAttributeMap(): Map<String, AttributeValue> {
-    return  mapOf(
+    return mapOf(
         "id" to AttributeValue.builder().s(id.toString()).build(),
         "ownerId" to AttributeValue.builder().s(ownerId.toString()).build(),
         "status" to AttributeValue.builder().s(status.name).build(),
         "balance" to AttributeValue.builder().n(balance.amount.toPlainString()).build(),
-        "createdAt" to AttributeValue.builder().n(createdAt.toEpochMilliseconds().toString()).build(),
-        "updatedAt" to AttributeValue.builder().n(updatedAt.toEpochMilliseconds().toString()).build()
+        "createdAt" to AttributeValue.builder().n(createdAt.toString()).build(),
+        "updatedAt" to AttributeValue.builder().n(updatedAt.toString()).build()
     )
 }
 
@@ -30,7 +30,7 @@ fun Transaction.getAttributeMap(accountId: String): Map<String, AttributeValue> 
         "amount" to AttributeValue.builder().n(amount.toPlainString()).build(),
         "currency" to AttributeValue.builder().s(currency.toString()).build(),
         "status" to AttributeValue.builder().s(status.name).build(),
-        "timestamp" to AttributeValue.builder().n(timestamp.toEpochMilliseconds().toString()).build(),
+        "timestamp" to AttributeValue.builder().n(timestamp.toString()).build(),
         "accountId" to AttributeValue.builder().s(accountId).build(),
     )
 }
@@ -56,12 +56,8 @@ fun Map<String, AttributeValue>.toAccount(): Account {
             )
         } ?: throw InvalidDbParameterException("balance"),
 
-        updatedAt = this["updatedAt"]?.let {
-            Instant.fromEpochMilliseconds(it.n().toLong())
-        } ?: throw InvalidDbParameterException("updatedAt"),
+        updatedAt = this["updatedAt"]?.n()?.toLong() ?: throw InvalidDbParameterException("updatedAt"),
 
-        createdAt = this["createdAt"]?.let {
-            Instant.fromEpochMilliseconds(it.n().toLong())
-        } ?: throw InvalidDbParameterException("createdAt")
+        createdAt = this["createdAt"]?.n()?.toLong() ?: throw InvalidDbParameterException("createdAt")
     )
 }

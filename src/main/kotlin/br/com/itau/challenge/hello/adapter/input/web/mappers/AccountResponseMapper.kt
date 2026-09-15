@@ -4,6 +4,7 @@ import br.com.itau.challenge.hello.adapter.input.web.dto.AccountBalanceResponse
 import br.com.itau.challenge.hello.adapter.input.web.dto.BalanceResponse
 import br.com.itau.challenge.hello.domain.model.Account
 import java.time.ZoneId
+import kotlin.time.Instant
 import kotlin.time.toJavaInstant
 
 fun Account.toResponse() = AccountBalanceResponse(
@@ -13,7 +14,8 @@ fun Account.toResponse() = AccountBalanceResponse(
         currency = this.balance.currency,
         amount = this.balance.amount
     ),
-    updatedAt = this.updatedAt.toJavaInstant()
+    updatedAt = Instant.fromEpochMilliseconds(this.updatedAt/1000)
+        .toJavaInstant()
         .atZone(ZoneId.of("America/Sao_Paulo"))
         .toLocalDateTime(),
 )

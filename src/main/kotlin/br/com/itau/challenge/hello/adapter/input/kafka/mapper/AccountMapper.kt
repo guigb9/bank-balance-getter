@@ -25,10 +25,6 @@ fun AccountMessage.toEntity(updatedAt: Long?) = Account(
             currency = it.currency ?: throw InvalidMessageFormatException("balance.amount")
         )
     } ?: throw InvalidMessageFormatException("balance"),
-    createdAt = createdAt?.let { ms ->
-        Instant.fromEpochMilliseconds(ms/1000)
-    } ?: throw InvalidMessageFormatException("createdAt"),
-    updatedAt = updatedAt?.let { ms ->
-        Instant.fromEpochMilliseconds(ms/1000)
-    } ?: throw InvalidMessageFormatException("updatedAt")
+    createdAt = createdAt ?: throw InvalidMessageFormatException("createdAt"),
+    updatedAt = updatedAt ?: throw InvalidMessageFormatException("updatedAt")
 )

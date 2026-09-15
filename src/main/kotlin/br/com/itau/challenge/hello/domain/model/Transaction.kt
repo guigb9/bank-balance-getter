@@ -11,6 +11,6 @@ data class Transaction(
     val amount: BigDecimal,
     val currency: Currency,
     val status: TransactionStatusEnum,
-    val timestamp: Instant,
+    val timestamp: Long,
     val accountId: UUID,
 )
