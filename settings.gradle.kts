@@ -3,3 +3,5 @@ plugins {
 }
 
 rootProject.name = "itau-code-challange-starter-kit"
+
+include("src:test:resources")
