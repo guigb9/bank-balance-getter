@@ -16,8 +16,6 @@ import kotlin.test.assertEquals
 import tools.jackson.databind.DeserializationFeature
 import java.math.BigDecimal
 import java.security.InvalidParameterException
-import java.time.Instant
-import java.time.ZoneId
 import java.util.Currency
 import java.util.UUID
 
@@ -25,16 +23,11 @@ class FinancialTransactionsConsumerTest {
 
     private val objectMapper = JsonMapper.builder().enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS).build()
 
-
-    fun localDateTimeSP(timestampMillis: Long) = Instant.ofEpochMilli(timestampMillis)
-        .atZone(ZoneId.of("America/Sao_Paulo"))
-        .toLocalDateTime()
-
     private val accountToAssert = Account(
         id = UUID.fromString("5b19c8b6-0cc4-4c72-a989-0c2ee15fa975"),
         ownerId = UUID.fromString("315e3cfe-f4af-4cd2-b298-a449e614349a"),
-        createdAt = localDateTimeSP(1634874339000000),
-        updatedAt = localDateTimeSP(1751641364589998),
+        createdAt = 1634874339000000,
+        updatedAt = 1751641364589998,
         balance = Balance(
             currency = "BRL",
             amount = BigDecimal("183.12").setScale(2)
@@ -49,7 +42,7 @@ class FinancialTransactionsConsumerTest {
         amount = BigDecimal("97.07"),
         currency = Currency.getInstance("BRL"),
         status = TransactionStatusEnum.valueOf("APPROVED"),
-        timestamp = kotlin.time.Instant.fromEpochMilliseconds(1751641364589998),
+        timestamp = 1751641364589998,
         accountId = UUID.fromString("5b19c8b6-0cc4-4c72-a989-0c2ee15fa975")
     )
 
