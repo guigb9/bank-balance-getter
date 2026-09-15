@@ -10,6 +10,6 @@ data class Account(
     val ownerId: UUID,
     val status: AccountStatusEnum,
     val balance: Balance,
-    val createdAt: Instant,
-    val updatedAt: Instant,
+    val createdAt: Long,
+    val updatedAt: Long,
 )

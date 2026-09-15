@@ -12,7 +12,6 @@ import software.amazon.awssdk.services.dynamodb.model.Put
 import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem
 import software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest
 import software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException
-import software.amazon.awssdk.services.dynamodb.model.Update
 
 @Service
 class AccountWriter(
@@ -53,6 +52,7 @@ class AccountWriter(
     }
 }
 
+
 fun Account.toUpsertRequest(tableName: String) : Put {
     return Put.builder()
         .tableName(tableName)
@@ -60,7 +60,7 @@ fun Account.toUpsertRequest(tableName: String) : Put {
         .conditionExpression("attribute_not_exists(id) OR updatedAt < :updatedAtMessage")
         .expressionAttributeValues(
             mapOf(
-                ":updatedAtMessage" to AttributeValue.builder().n(updatedAt.toEpochMilliseconds().toString()).build()
+                ":updatedAtMessage" to AttributeValue.builder().n(updatedAt.toString()).build()
             )
         )
         .build()
