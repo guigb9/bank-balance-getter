@@ -15,6 +15,8 @@ dynamodb:
   table-name: ${GREETING_TABLE_NAME:GreetingMessages}
   account-table-name: accounts
   transaction-table-name: transactions
+  transaction-idempotency-table-name: transaction_idempotency
+  transaction-idempotency-ttl-seconds: ${TRANSACTION_IDEMPOTENCY_TTL_SECONDS:86400}
 
 financial-processed-transactions:
   topic-name: transacoes-financeiras-processadas

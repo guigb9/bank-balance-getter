@@ -11,7 +11,8 @@ import org.slf4j.LoggerFactory
 class DynamoDbTableInitializer(
     private val dynamoDbClient: DynamoDbClient,
     @Value("\${dynamodb.account-table-name}") private val accountTableName: String,
-    @Value("\${dynamodb.transaction-table-name}") private val transactionTableName: String
+    @Value("\${dynamodb.transaction-table-name}") private val transactionTableName: String,
+    @Value("\${dynamodb.transaction-idempotency-table-name}") private val transactionIdempotencyTableName: String,
 ) {
 
     private val logger = LoggerFactory.getLogger(this::class.java)
@@ -20,6 +21,8 @@ class DynamoDbTableInitializer(
     fun initializeTables() {
         createAccountTable()
         createTransactionTable()
+        createTransactionIdempotencyTable()
+        enableTransactionIdempotencyTtl()
     }
 
     private fun createAccountTable() {
@@ -52,6 +55,46 @@ class DynamoDbTableInitializer(
             .build()
 
         executeCreation(transactionTableName, request)
+    }
+
+    private fun createTransactionIdempotencyTable() {
+        val request = CreateTableRequest.builder()
+            .tableName(transactionIdempotencyTableName)
+            .attributeDefinitions(
+                AttributeDefinition.builder().attributeName("id").attributeType(ScalarAttributeType.S).build(),
+            )
+            .keySchema(
+                KeySchemaElement.builder().attributeName("id").keyType(KeyType.HASH).build(),
+            )
+            .billingMode(BillingMode.PAY_PER_REQUEST)
+            .build()
+
+        executeCreation(transactionIdempotencyTableName, request)
+    }
+
+    private fun enableTransactionIdempotencyTtl() {
+        val description = dynamoDbClient.describeTimeToLive(
+            DescribeTimeToLiveRequest.builder()
+                .tableName(transactionIdempotencyTableName)
+                .build(),
+        )
+        val status = description?.timeToLiveDescription()?.timeToLiveStatus()
+
+        if (status == TimeToLiveStatus.ENABLED || status == TimeToLiveStatus.ENABLING) {
+            return
+        }
+
+        val request = UpdateTimeToLiveRequest.builder()
+            .tableName(transactionIdempotencyTableName)
+            .timeToLiveSpecification(
+                TimeToLiveSpecification.builder()
+                    .attributeName("expiresAt")
+                    .enabled(true)
+                    .build(),
+            )
+            .build()
+
+        dynamoDbClient.updateTimeToLive(request)
     }
 
     private fun executeCreation(tableName: String, request: CreateTableRequest) {
