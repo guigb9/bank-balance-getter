@@ -74,7 +74,6 @@ jacoco {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
-	finalizedBy(tasks.jacocoTestReport)
 
 	testLogging {
 		events("passed", "skipped", "failed")
@@ -113,6 +112,10 @@ tasks.withType<Test> {
 			}
 		},
 	)
+}
+
+tasks.test {
+	finalizedBy(tasks.jacocoTestReport)
 }
 
 val jacocoCoverageExclusions =

@@ -122,6 +122,7 @@ Variáveis:
 | `DYNAMODB_REGION` | `us-east-1` |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:19092` |
 | `KAFKA_CONSUMER_GROUP_ID` | `hello-greeting-template-consumer` |
+| `FINANCIAL_TRANSACTIONS_TOPIC` | `transacoes-financeiras-processadas` |
 | `TRANSACTION_IDEMPOTENCY_TTL_SECONDS` | `86400` (24 horas) |
 
 As tabelas `accounts`, `transactions` e `transaction_idempotency` são criadas pela aplicação. O tópico esperado é `transacoes-financeiras-processadas`.
@@ -146,6 +147,20 @@ docker build --target test .
 ```
 
 Os cenários cobrem mapeamento e validação de eventos, orquestração dos casos de uso, contratos DynamoDB, idempotência, leitura consistente, erros HTTP e configuração das tabelas.
+
+Os testes de integração usam DynamoDB Local e Redpanda reais. Eles validam persistência e leitura de saldo, rejeição de versões antigas, idempotência por `transactionId` e consumo/mapeamento do evento Kafka:
+
+```bash
+make integration-test
+```
+
+Também podem ser executados manualmente após subir a infraestrutura:
+
+```bash
+make db-up
+make kafka-up
+./gradlew integrationTest
+```
 
 ## Estrutura
 

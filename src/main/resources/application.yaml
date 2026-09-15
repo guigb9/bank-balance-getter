@@ -19,7 +19,8 @@ dynamodb:
   transaction-idempotency-ttl-seconds: ${TRANSACTION_IDEMPOTENCY_TTL_SECONDS:86400}
 
 financial-processed-transactions:
-  topic-name: transacoes-financeiras-processadas
+  topic-name: ${FINANCIAL_TRANSACTIONS_TOPIC:transacoes-financeiras-processadas}
+  concurrency: ${FINANCIAL_TRANSACTIONS_CONCURRENCY:100}
 
 greeting-templates:
   topic-name: ${GREETING_TEMPLATES_TOPIC:greeting-templates}

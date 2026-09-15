@@ -1,6 +1,7 @@
 package br.com.itau.challenge.balance.adapter.input.kafka.config
 
 import br.com.itau.challenge.balance.adapter.input.kafka.exception.InvalidMessageFormatException
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory
@@ -45,11 +46,12 @@ class KafkaConfig(
     @Bean
     fun kafkaListenerContainerFactory(
         consumerFactory: ConsumerFactory<String, Any>,
-        kafkaErrorHandler: DefaultErrorHandler
+        kafkaErrorHandler: DefaultErrorHandler,
+        @Value("\${financial-processed-transactions.concurrency}") concurrency: Int,
     ): ConcurrentKafkaListenerContainerFactory<String, Any> {
 
         return ConcurrentKafkaListenerContainerFactory<String, Any>().apply {
-            setConcurrency(100)
+            setConcurrency(concurrency)
             setConsumerFactory(consumerFactory)
             setCommonErrorHandler(kafkaErrorHandler)
         }

@@ -11,6 +11,7 @@ services:
       GREETING_TABLE_NAME: GreetingMessages
       KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       GREETING_TEMPLATES_TOPIC: greeting-templates
+      FINANCIAL_TRANSACTIONS_TOPIC: transacoes-financeiras-processadas
     depends_on:
       - dynamodb
       - dynamodb-seed
@@ -36,7 +37,7 @@ services:
       GREETING_TABLE_NAME: GreetingMessages
     volumes:
       - ./infra/dynamodb:/dynamodb-seed:ro
-    entrypoint: ["/bin/bash", "/dynamodb-seed/seed.sh"]
+    entrypoint: ["/bin/bash", "-c", "sed 's/\r$//' /dynamodb-seed/seed.sh | /bin/bash"]
 
   dynamodb-admin:
     image: aaronshaf/dynamodb-admin:5.3.4
@@ -75,9 +76,10 @@ services:
     environment:
       REDPANDA_BROKERS: redpanda:9092
       GREETING_TEMPLATES_TOPIC: greeting-templates
+      FINANCIAL_TRANSACTIONS_TOPIC: transacoes-financeiras-processadas
     volumes:
       - ./infra/redpanda:/redpanda-seed:ro
-    entrypoint: ["/bin/bash", "-c", "/redpanda-seed/config.sh && /redpanda-seed/seed.sh"]
+    entrypoint: ["/bin/bash", "-c", "sed 's/\r$//' /redpanda-seed/config.sh | /bin/bash && sed 's/\r$//' /redpanda-seed/seed.sh | /bin/bash"]
 
   redpanda-console:
     image: docker.redpanda.com/redpandadata/console:v3.9.0

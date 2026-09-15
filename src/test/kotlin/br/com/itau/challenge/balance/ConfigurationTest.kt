@@ -105,6 +105,6 @@ class ConfigurationTest {
 
         assertNotNull(config.deadLetterPublishingRecoverer())
         assertNotNull(handler)
-        assertNotNull(config.kafkaListenerContainerFactory(consumerFactory, handler))
+        assertNotNull(config.kafkaListenerContainerFactory(consumerFactory, handler, 100))
     }
 }
