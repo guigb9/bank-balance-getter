@@ -120,12 +120,15 @@ Variáveis:
 |-|-|
 | `DYNAMODB_ENDPOINT` | `http://localhost:8000` |
 | `DYNAMODB_REGION` | `us-east-1` |
+| `DYNAMODB_ACCOUNT_TABLE_NAME` | `accounts` |
+| `DYNAMODB_TRANSACTION_TABLE_NAME` | `transactions` |
+| `DYNAMODB_TRANSACTION_IDEMPOTENCY_TABLE_NAME` | `transaction_idempotency` |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:19092` |
-| `KAFKA_CONSUMER_GROUP_ID` | `hello-greeting-template-consumer` |
+| `KAFKA_CONSUMER_GROUP_ID` | `financial-transactions-consumer` |
 | `FINANCIAL_TRANSACTIONS_TOPIC` | `transacoes-financeiras-processadas` |
 | `TRANSACTION_IDEMPOTENCY_TTL_SECONDS` | `86400` (24 horas) |
 
-As tabelas `accounts`, `transactions` e `transaction_idempotency` são criadas pela aplicação. O tópico esperado é `transacoes-financeiras-processadas`.
+As tabelas `accounts`, `transactions` e `transaction_idempotency` são criadas pela aplicação ou pelo seed do Compose. O seed configura o TTL `expiresAt`, insere uma conta e uma transação de exemplo e publica três eventos em `transacoes-financeiras-processadas`.
 
 ## Testes e cobertura
 

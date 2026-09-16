@@ -1,0 +1,8 @@
+{
+  "id": {"S": "5b19c8b6-0cc4-4c72-a989-0c2ee15fa975"},
+  "ownerId": {"S": "315e3cfe-f4af-4cd2-b298-a449e614349a"},
+  "status": {"S": "ENABLED"},
+  "balance": {"N": "183.12"},
+  "createdAt": {"N": "1634874339000000"},
+  "updatedAt": {"N": "1751641364589998"}
+}

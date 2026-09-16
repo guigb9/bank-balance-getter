@@ -1,10 +1,10 @@
 spring:
   application:
-    name: itau-code-challange-starter-kit
+    name: bank-balance-getter
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
     consumer:
-      group-id: ${KAFKA_CONSUMER_GROUP_ID:hello-greeting-template-consumer}
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:financial-transactions-consumer}
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -12,15 +12,11 @@ spring:
 dynamodb:
   endpoint: ${DYNAMODB_ENDPOINT:http://localhost:8000}
   region: ${DYNAMODB_REGION:us-east-1}
-  table-name: ${GREETING_TABLE_NAME:GreetingMessages}
-  account-table-name: accounts
-  transaction-table-name: transactions
-  transaction-idempotency-table-name: transaction_idempotency
+  account-table-name: ${DYNAMODB_ACCOUNT_TABLE_NAME:accounts}
+  transaction-table-name: ${DYNAMODB_TRANSACTION_TABLE_NAME:transactions}
+  transaction-idempotency-table-name: ${DYNAMODB_TRANSACTION_IDEMPOTENCY_TABLE_NAME:transaction_idempotency}
   transaction-idempotency-ttl-seconds: ${TRANSACTION_IDEMPOTENCY_TTL_SECONDS:86400}
 
 financial-processed-transactions:
   topic-name: ${FINANCIAL_TRANSACTIONS_TOPIC:transacoes-financeiras-processadas}
   concurrency: ${FINANCIAL_TRANSACTIONS_CONCURRENCY:100}
-
-greeting-templates:
-  topic-name: ${GREETING_TEMPLATES_TOPIC:greeting-templates}
