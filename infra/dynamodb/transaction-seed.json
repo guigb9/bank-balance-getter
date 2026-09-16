@@ -1,0 +1,9 @@
+{
+  "id": {"S": "8e8ae808-b154-48b5-9f3e-553935cc4543"},
+  "type": {"S": "CREDIT"},
+  "amount": {"N": "97.07"},
+  "currency": {"S": "BRL"},
+  "status": {"S": "APPROVED"},
+  "timestamp": {"N": "1751641364589998"},
+  "accountId": {"S": "5b19c8b6-0cc4-4c72-a989-0c2ee15fa975"}
+}

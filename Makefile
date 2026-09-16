@@ -1,11 +1,13 @@
 .DEFAULT_GOAL := help
 
-IMAGE := itau-hello-world
+IMAGE := itau-bank-balance
 COMPOSE := docker compose
 HTTP_DIR := http
 COMPOSE_PROJECT := $(notdir $(CURDIR))
 PARTITIONS ?= 1
 COUNT ?= 100
+TABLE ?= accounts
+TOPIC ?= transacoes-financeiras-processadas
 
 .PHONY: help
 help: ## Show this help
@@ -40,10 +42,10 @@ http: ## Call all .http files against the running app (no local deps, runs via D
 	docker run --rm \
 		--add-host=host.docker.internal:host-gateway \
 		-v "$(CURDIR)/$(HTTP_DIR)":/http -w /http \
-		node:20-alpine sh -c "npx --yes httpyac send hello.http --all -e docker"
+		node:20-alpine sh -c "npx --yes httpyac send balances.http --all -e docker"
 
 .PHONY: db-up
-db-up: ## Start DynamoDB Local + web console and (re)seed the GreetingMessages table
+db-up: ## Start DynamoDB Local + web console and seed balance tables
 	$(COMPOSE) up dynamodb dynamodb-seed dynamodb-admin -d
 
 .PHONY: db-seed
@@ -51,16 +53,16 @@ db-seed: ## Re-run the seed job (table creation is idempotent, items are overwri
 	$(COMPOSE) up dynamodb-seed
 
 .PHONY: db-scan
-db-scan: ## List greeting messages currently stored in DynamoDB
+db-scan: ## Scan a DynamoDB table (default: accounts; usage: make db-scan TABLE=transactions)
 	$(COMPOSE) run --rm --entrypoint aws dynamodb-seed \
-		dynamodb scan --table-name GreetingMessages --endpoint-url http://dynamodb:8000 --region us-east-1
+		dynamodb scan --table-name $(TABLE) --endpoint-url http://dynamodb:8000 --region us-east-1
 
 .PHONY: db-down
 db-down: ## Stop DynamoDB Local + web console
 	$(COMPOSE) stop dynamodb dynamodb-seed dynamodb-admin
 
 .PHONY: kafka-up
-kafka-up: ## Start Redpanda + Console and (re)seed the greeting-templates topic
+kafka-up: ## Start Redpanda + Console and seed the financial transactions topic
 	$(COMPOSE) up redpanda redpanda-seed redpanda-console -d
 
 .PHONY: kafka-seed
@@ -76,30 +78,13 @@ kafka-topic-create: ## Create a Kafka topic on Redpanda (usage: make kafka-topic
 	$(COMPOSE) run --rm --entrypoint rpk redpanda-seed \
 		topic create $(NAME) --brokers redpanda:9092 --partitions $(PARTITIONS) --replicas 1
 
-.PHONY: kafka-produce-accounts-events
-kafka-produce-accounts-events: ## Produce random account-event JSON messages to a Kafka topic (usage: make kafka-produce-accounts-events TOPIC=my-topic [COUNT=100])
-	@if [ -z "$(TOPIC)" ]; then \
-		echo "TOPIC is required, e.g. make kafka-produce-accounts-events TOPIC=my-topic COUNT=50"; \
-		exit 1; \
-	fi
-	$(COMPOSE) run --rm --entrypoint /bin/bash redpanda-seed \
-		/redpanda-seed/produce-accounts-events.sh $(TOPIC) $(COUNT)
-
 .PHONY: kafka-produce-transactions-events
-kafka-produce-transactions-events: ## Produce random transaction+account event JSON messages to a Kafka topic (usage: make kafka-produce-transactions-events TOPIC=my-topic [COUNT=100])
-	@if [ -z "$(TOPIC)" ]; then \
-		echo "TOPIC is required, e.g. make kafka-produce-transactions-events TOPIC=my-topic COUNT=50"; \
-		exit 1; \
-	fi
+kafka-produce-transactions-events: ## Produce random financial events (default topic; COUNT=100)
 	$(COMPOSE) run --rm --entrypoint /bin/bash redpanda-seed \
 		/redpanda-seed/produce-transactions-events.sh $(TOPIC) $(COUNT)
 
 .PHONY: kafka-consume
-kafka-consume: ## Print all messages on a Kafka topic (usage: make kafka-consume TOPIC=my-topic)
-	@if [ -z "$(TOPIC)" ]; then \
-		echo "TOPIC is required, e.g. make kafka-consume TOPIC=my-topic"; \
-		exit 1; \
-	fi
+kafka-consume: ## Print messages from the financial topic (override with TOPIC=name)
 	$(COMPOSE) run --rm --entrypoint /bin/bash redpanda-seed -c \
 		"timeout 5 rpk topic consume $(TOPIC) --brokers redpanda:9092 --format '%v\n' || true"
 

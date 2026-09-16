@@ -8,15 +8,20 @@ services:
     environment:
       DYNAMODB_ENDPOINT: http://dynamodb:8000
       DYNAMODB_REGION: us-east-1
-      GREETING_TABLE_NAME: GreetingMessages
+      DYNAMODB_ACCOUNT_TABLE_NAME: accounts
+      DYNAMODB_TRANSACTION_TABLE_NAME: transactions
+      DYNAMODB_TRANSACTION_IDEMPOTENCY_TABLE_NAME: transaction_idempotency
       KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
-      GREETING_TEMPLATES_TOPIC: greeting-templates
       FINANCIAL_TRANSACTIONS_TOPIC: transacoes-financeiras-processadas
     depends_on:
-      - dynamodb
-      - dynamodb-seed
-      - redpanda
-      - redpanda-seed
+      dynamodb:
+        condition: service_started
+      dynamodb-seed:
+        condition: service_completed_successfully
+      redpanda:
+        condition: service_started
+      redpanda-seed:
+        condition: service_completed_successfully
 
   dynamodb:
     image: amazon/dynamodb-local:3.3.0
@@ -34,7 +39,10 @@ services:
       AWS_SECRET_ACCESS_KEY: local
       AWS_DEFAULT_REGION: us-east-1
       DYNAMODB_ENDPOINT_URL: http://dynamodb:8000
-      GREETING_TABLE_NAME: GreetingMessages
+      DYNAMODB_ACCOUNT_TABLE_NAME: accounts
+      DYNAMODB_TRANSACTION_TABLE_NAME: transactions
+      DYNAMODB_TRANSACTION_IDEMPOTENCY_TABLE_NAME: transaction_idempotency
+      TRANSACTION_IDEMPOTENCY_TTL_SECONDS: 86400
     volumes:
       - ./infra/dynamodb:/dynamodb-seed:ro
     entrypoint: ["/bin/bash", "-c", "sed 's/\r$//' /dynamodb-seed/seed.sh | /bin/bash"]
@@ -75,7 +83,6 @@ services:
       - redpanda
     environment:
       REDPANDA_BROKERS: redpanda:9092
-      GREETING_TEMPLATES_TOPIC: greeting-templates
       FINANCIAL_TRANSACTIONS_TOPIC: transacoes-financeiras-processadas
     volumes:
       - ./infra/redpanda:/redpanda-seed:ro

@@ -14,16 +14,9 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
-import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
-import software.amazon.awssdk.services.dynamodb.model.BillingMode
-import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest
-import software.amazon.awssdk.services.dynamodb.model.DeleteTableRequest
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest
-import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement
-import software.amazon.awssdk.services.dynamodb.model.KeyType
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest
-import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType
 import java.math.BigDecimal
 import java.net.URI
 import java.util.Currency
@@ -31,13 +24,18 @@ import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+private const val SEEDED_ACCOUNT_ID = "5b19c8b6-0cc4-4c72-a989-0c2ee15fa975"
+private const val SEEDED_OWNER_ID = "315e3cfe-f4af-4cd2-b298-a449e614349a"
+private const val SEEDED_TRANSACTION_ID = "8e8ae808-b154-48b5-9f3e-553935cc4543"
+private const val SEEDED_TIMESTAMP = 1_751_641_364_589_998L
+
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DynamoDbAdaptersIntegrationTest {
 
-    private val suffix = UUID.randomUUID().toString().replace("-", "")
-    private val accountTable = "accounts_it_$suffix"
-    private val transactionTable = "transactions_it_$suffix"
-    private val idempotencyTable = "transaction_idempotency_it_$suffix"
+    private val accountTable = System.getenv("DYNAMODB_ACCOUNT_TABLE_NAME") ?: "accounts"
+    private val transactionTable = System.getenv("DYNAMODB_TRANSACTION_TABLE_NAME") ?: "transactions"
+    private val idempotencyTable =
+        System.getenv("DYNAMODB_TRANSACTION_IDEMPOTENCY_TABLE_NAME") ?: "transaction_idempotency"
 
     private lateinit var dynamoDbClient: DynamoDbClient
 
@@ -50,43 +48,48 @@ class DynamoDbAdaptersIntegrationTest {
                 StaticCredentialsProvider.create(AwsBasicCredentials.create("local", "local")),
             )
             .build()
-
-        createTable(accountTable, "id" to ScalarAttributeType.S)
-        createTable(
-            transactionTable,
-            "accountId" to ScalarAttributeType.S,
-            "timestamp" to ScalarAttributeType.N,
-        )
-        createTable(idempotencyTable, "id" to ScalarAttributeType.S)
     }
 
     @AfterAll
     fun tearDown() {
-        listOf(accountTable, transactionTable, idempotencyTable).forEach { tableName ->
-            dynamoDbClient.deleteTable(DeleteTableRequest.builder().tableName(tableName).build())
-        }
         dynamoDbClient.close()
     }
 
     @Test
-    fun `account writer persists newest balance and provider reads it consistently`() {
-        val accountId = UUID.randomUUID()
-        val writer = AccountWriter(accountTable, dynamoDbClient)
+    fun `provider reads seeded account and writer ignores an older balance`() {
+        val accountId = UUID.fromString(SEEDED_ACCOUNT_ID)
         val provider = AccountProvider(accountTable, dynamoDbClient)
+        val writer = AccountWriter(accountTable, dynamoDbClient)
 
-        writer.updateBalance(account(accountId, updatedAt = 2, amount = "200.00"))
-        writer.updateBalance(account(accountId, updatedAt = 1, amount = "100.00"))
+        val seededAccount = provider.getAccountWithBalance(accountId)
 
-        val persisted = provider.getAccountWithBalance(accountId)
+        assertEquals(accountId, seededAccount.id)
+        assertEquals(UUID.fromString(SEEDED_OWNER_ID), seededAccount.ownerId)
+        assertEquals(AccountStatusEnum.ENABLED, seededAccount.status)
+        assertEquals(0, BigDecimal("183.12").compareTo(seededAccount.balance.amount))
+        assertEquals("BRL", seededAccount.balance.currency)
+        assertEquals(SEEDED_TIMESTAMP, seededAccount.updatedAt)
 
-        assertEquals(0, BigDecimal("200.00").compareTo(persisted.balance.amount))
-        assertEquals(2, persisted.updatedAt)
+        writer.updateBalance(
+            Account(
+                id = accountId,
+                ownerId = UUID.fromString(SEEDED_OWNER_ID),
+                status = AccountStatusEnum.ENABLED,
+                balance = Balance(currency = "BRL", amount = BigDecimal.ZERO),
+                createdAt = 1_634_874_339_000_000,
+                updatedAt = SEEDED_TIMESTAMP - 1,
+            ),
+        )
+
+        val accountAfterOlderEvent = provider.getAccountWithBalance(accountId)
+        assertEquals(0, BigDecimal("183.12").compareTo(accountAfterOlderEvent.balance.amount))
+        assertEquals(SEEDED_TIMESTAMP, accountAfterOlderEvent.updatedAt)
     }
 
     @Test
-    fun `transaction writer stores one transaction for duplicate id with different timestamp`() {
-        val accountId = UUID.randomUUID()
-        val transactionId = UUID.randomUUID()
+    fun `seeded transaction and ttl marker prevent duplicate transaction id`() {
+        val accountId = UUID.fromString(SEEDED_ACCOUNT_ID)
+        val transactionId = UUID.fromString(SEEDED_TRANSACTION_ID)
         val writer = TransactionWriter(
             transactionTable,
             idempotencyTable,
@@ -94,10 +97,42 @@ class DynamoDbAdaptersIntegrationTest {
             dynamoDbClient,
         )
 
-        writer.registerTransaction(transaction(transactionId, accountId, timestamp = 1_000))
-        writer.registerTransaction(transaction(transactionId, accountId, timestamp = 2_000))
+        val seededTransactions = transactionsFor(accountId)
+        assertEquals(1, seededTransactions.count())
+        assertEquals(SEEDED_TRANSACTION_ID, seededTransactions.items().single()["id"]?.s())
+        assertEquals(SEEDED_TIMESTAMP.toString(), seededTransactions.items().single()["timestamp"]?.n())
 
-        val transactions = dynamoDbClient.query(
+        val marker = dynamoDbClient.getItem(
+            GetItemRequest.builder()
+                .tableName(idempotencyTable)
+                .key(
+                    mapOf(
+                        "id" to AttributeValue.builder().s(SEEDED_TRANSACTION_ID).build(),
+                    ),
+                )
+                .consistentRead(true)
+                .build(),
+        )
+        assertTrue(marker.hasItem())
+        assertTrue(marker.item()["expiresAt"]!!.n().toLong() > 0)
+
+        writer.registerTransaction(
+            Transaction(
+                id = transactionId,
+                type = TransactionTypeEnum.CREDIT,
+                amount = BigDecimal("999.99"),
+                currency = Currency.getInstance("BRL"),
+                status = TransactionStatusEnum.APPROVED,
+                timestamp = SEEDED_TIMESTAMP + 1,
+                accountId = accountId,
+            ),
+        )
+
+        assertEquals(1, transactionsFor(accountId).count())
+    }
+
+    private fun transactionsFor(accountId: UUID) =
+        dynamoDbClient.query(
             QueryRequest.builder()
                 .tableName(transactionTable)
                 .keyConditionExpression("accountId = :accountId")
@@ -109,86 +144,4 @@ class DynamoDbAdaptersIntegrationTest {
                 .consistentRead(true)
                 .build(),
         )
-
-        assertEquals(1, transactions.count())
-        assertEquals("1000", transactions.items().single()["timestamp"]?.n())
-
-        val marker = dynamoDbClient.getItem(
-            GetItemRequest.builder()
-                .tableName(idempotencyTable)
-                .key(
-                    mapOf(
-                        "id" to AttributeValue.builder().s(transactionId.toString()).build(),
-                    ),
-                )
-                .consistentRead(true)
-                .build(),
-        )
-
-        assertTrue(marker.hasItem())
-        assertTrue(marker.item()["expiresAt"]!!.n().toLong() > 0)
-    }
-
-    private fun createTable(
-        tableName: String,
-        partitionKey: Pair<String, ScalarAttributeType>,
-        sortKey: Pair<String, ScalarAttributeType>? = null,
-    ) {
-        val attributes = buildList {
-            add(attribute(partitionKey))
-            sortKey?.let { add(attribute(it)) }
-        }
-        val keys = buildList {
-            add(key(partitionKey.first, KeyType.HASH))
-            sortKey?.let { add(key(it.first, KeyType.RANGE)) }
-        }
-
-        dynamoDbClient.createTable(
-            CreateTableRequest.builder()
-                .tableName(tableName)
-                .attributeDefinitions(attributes)
-                .keySchema(keys)
-                .billingMode(BillingMode.PAY_PER_REQUEST)
-                .build(),
-        )
-    }
-
-    private fun attribute(definition: Pair<String, ScalarAttributeType>) =
-        AttributeDefinition.builder()
-            .attributeName(definition.first)
-            .attributeType(definition.second)
-            .build()
-
-    private fun key(name: String, type: KeyType) =
-        KeySchemaElement.builder()
-            .attributeName(name)
-            .keyType(type)
-            .build()
-
-    private fun account(
-        id: UUID,
-        updatedAt: Long,
-        amount: String,
-    ) = Account(
-        id = id,
-        ownerId = UUID.randomUUID(),
-        status = AccountStatusEnum.ENABLED,
-        balance = Balance(currency = "BRL", amount = BigDecimal(amount)),
-        createdAt = 1,
-        updatedAt = updatedAt,
-    )
-
-    private fun transaction(
-        id: UUID,
-        accountId: UUID,
-        timestamp: Long,
-    ) = Transaction(
-        id = id,
-        type = TransactionTypeEnum.CREDIT,
-        amount = BigDecimal("10.00"),
-        currency = Currency.getInstance("BRL"),
-        status = TransactionStatusEnum.APPROVED,
-        timestamp = timestamp,
-        accountId = accountId,
-    )
 }
